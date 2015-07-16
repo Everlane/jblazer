@@ -3,7 +3,7 @@ Gem::Specification.new do |s|
   s.version  = '0.0.1'
   s.authors  = ['Dirk Gadsden']
   s.email    = ['dirk@esherido.com']
-  s.summary  = 'Fast JSON generator based on Jbuilder'
+  s.summary  = 'Fast JSON generator and drop-in replacement for Jbuilder'
   s.homepage = 'https://github.com/Everlane/jblazer'
   s.license  = 'MIT'
 
