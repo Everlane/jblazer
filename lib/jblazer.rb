@@ -93,10 +93,14 @@ module Jblazer
       @buffer << name.to_json
       @buffer << ':'
 
-      if args.length == 1
+      if args.length == 1 && !block.nil?
+        array! args.first, &block
+
+      elsif args.length == 1
         @buffer << args.first.to_json
+
       else
-        block.call
+        raise "Missing value argument for '#{name}'"
       end
 
       @buffer << ","

@@ -39,4 +39,21 @@ describe Jblazer do
 
     expect(template.to_s).to eql '{"a":"b","c":1}'
   end
+
+  it 'should compile an array of objects' do
+    items = [
+      {:a => 1},
+      {:b => 2}
+    ]
+
+    template = make_template do |json|
+      json.items items do |item|
+        item.each do |key, value|
+          json.send key, value
+        end
+      end
+    end
+
+    expect(template.to_s).to eql '{"items":[{"a":1},{"b":2}]}'
+  end
 end
