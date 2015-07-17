@@ -93,11 +93,23 @@ module Jblazer
       @buffer << name.to_json
       @buffer << ':'
 
-      if args.length == 1 && !block.nil?
+      if args.length > 1
+        raise "Too many arguments (max is 1, got #{args.length})"
+
+      elsif args.length == 1 && !block.nil?
         array! args.first, &block
 
       elsif args.length == 1
         @buffer << args.first.to_json
+
+      elsif !block.nil?
+        @is_first = true
+
+        implicitly_open :object
+
+        block.call self
+
+        implicitly_close
 
       else
         raise "Missing value argument for '#{name}'"
@@ -139,9 +151,11 @@ module Jblazer
     end
 
     def structure kind
-      # @stack.push kind
+      @stack.push kind
+
       yield
-      # @stack.pop
+
+      @stack.pop
     end
   end
 end
