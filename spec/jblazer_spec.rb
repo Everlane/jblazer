@@ -56,4 +56,16 @@ describe Jblazer do
 
     expect(template.to_s).to eql '{"items":[{"a":1},{"b":2}]}'
   end
+
+  it 'should extract some values' do
+    AnObject = Struct.new :a, :b
+
+    object = AnObject.new 1, 2
+
+    template = make_template do |json|
+      json.extract! object, :a, :b
+    end
+
+    expect(template.to_s).to eql '{"a":1,"b":2}'
+  end
 end
