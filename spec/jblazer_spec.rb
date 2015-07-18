@@ -1,6 +1,6 @@
 require_relative 'spec_helper'
 
-describe Jblazer do 
+describe Jblazer do
   def make_template context=nil
     json = Jblazer::Template.new context
 
@@ -8,7 +8,7 @@ describe Jblazer do
 
     json
   end
-  
+
   it 'should have a context' do
     context = Object.new
 
@@ -23,12 +23,20 @@ describe Jblazer do
     expect(json.to_s).to eql ''
   end
 
-  it 'should compile an array' do
+  it 'should compile an array of values' do
     template = make_template do |json|
       json.array! [1, '2', :'3']
     end
 
     expect(template.to_s).to eql '[1,"2","3"]'
+  end
+
+  it 'should compile an empty array' do
+    template = make_template do |json|
+      json.array! []
+    end
+
+    expect(template.to_s).to eql '[]'
   end
 
   it 'should compile an object' do
@@ -38,6 +46,18 @@ describe Jblazer do
     end
 
     expect(template.to_s).to eql '{"a":"b","c":1}'
+  end
+
+  it 'should compile an array of arrays' do
+    items = [:foo, 'bar', 123]
+
+    template = make_template do |json|
+      json.array! items do |item|
+        json.array! [item]
+      end
+    end
+
+    expect(template.to_s).to eql '[["foo"],["bar"],[123]]'
   end
 
   it 'should compile an array of objects' do
