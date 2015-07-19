@@ -30,41 +30,41 @@ module Jblazer
       @context = context
       @buffer = UnwindableBuffer.new
 
-      @stack = []
+      # Keeps track of structures implicitly opened and closed
+      @implicit_stack = []
+      # If we're evaluating the first item in a potentially-implicit structure
       @is_first = true
     end
 
     def array! items, &block
-      structure :array do
-        @buffer << "["
+      @buffer << "["
 
-        depth = @stack.length
+      depth = @implicit_stack.length
 
-        last_index = items.length - 1
-        
-        items.each_with_index do |item, index|
-          @is_first = true
+      last_index = items.length - 1
+      
+      items.each_with_index do |item, index|
+        @is_first = true
 
-          if block.nil?
-            @buffer << item.to_json
-          else
-            block.call item
-          end
-
-          # Close whatever was opened by the item
-          implicitly_close if @stack.length > depth
-
-          @buffer << "," unless index == last_index
+        if block.nil?
+          @buffer << item.to_json
+        else
+          block.call item
         end
 
-        @buffer << "]"
+        # Close whatever was opened by the item
+        implicitly_close if @implicit_stack.length > depth
+
+        @buffer << "," unless index == last_index
       end
+
+      @buffer << "]"
     end
 
     def implicitly_close
       @buffer.unwind if @buffer.last == ","
 
-      kind = @stack.pop
+      kind = @implicit_stack.pop
       
       case kind
       when :object
@@ -128,7 +128,7 @@ module Jblazer
         raise "Cannot open kind: #{kind.inspect}"
       end
 
-      @stack << kind
+      @implicit_stack << kind
       @is_first = false
     end
 
@@ -145,17 +145,9 @@ module Jblazer
 
 
     def to_s
-      implicitly_close if @stack.length > 0
+      implicitly_close if @implicit_stack.length > 0
 
       @buffer.to_s
-    end
-
-    def structure kind
-      @stack.push kind
-
-      yield
-
-      @stack.pop
     end
   end
 end
