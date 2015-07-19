@@ -61,19 +61,6 @@ module Jblazer
       @buffer << "]"
     end
 
-    def implicitly_close
-      @buffer.unwind if @buffer.last == ","
-
-      kind = @implicit_stack.pop
-      
-      case kind
-      when :object
-        @buffer << "}"
-      else
-        raise "Cannot close kind: #{kind.inspect}"
-      end
-    end
-
     def partial! name, opts
       raise ':collection not supported yet' if opts[:collection]
       raise ':as not supported yet' if opts[:as]
@@ -85,6 +72,23 @@ module Jblazer
       ret = @context.render :partial => name, :locals => locals
 
       @buffer << ret
+    end
+
+    def extract! obj, *keys
+      implicitly_open :object
+
+      keys.each do |key|
+        @buffer << key.to_json
+        @buffer << ':'
+        @buffer << obj.send(key).to_json
+        @buffer << ","
+      end
+    end
+
+    def to_s
+      implicitly_close if @implicit_stack.length > 0
+
+      @buffer.to_s
     end
 
     def method_missing name, *args, &block
@@ -118,6 +122,10 @@ module Jblazer
       @buffer << ","
     end
 
+    private
+
+    # Called as a pre-condition by key-value-defining methods to set up
+    # the JSON block definition for those keys and values.
     def implicitly_open kind
       return unless @is_first
 
@@ -132,24 +140,22 @@ module Jblazer
       @is_first = false
     end
 
-    def extract! obj, *keys
-      implicitly_open :object
+    # Called as a post-condition of methods that build outer structures
+    # (arrays and objects) after they've processed each member.
+    def implicitly_close
+      @buffer.unwind if @buffer.last == ","
 
-      keys.each do |key|
-        @buffer << key.to_json
-        @buffer << ':'
-        @buffer << obj.send(key).to_json
-        @buffer << ","
+      kind = @implicit_stack.pop
+      
+      case kind
+      when :object
+        @buffer << "}"
+      else
+        raise "Cannot close kind: #{kind.inspect}"
       end
     end
 
-
-    def to_s
-      implicitly_close if @implicit_stack.length > 0
-
-      @buffer.to_s
-    end
-  end
-end
+  end# Template
+end# Jblazer
 
 require 'jblazer/railtie' if defined? Rails
