@@ -25,10 +25,13 @@ module Jblazer
 
   class Template
     attr_reader :buffer, :context
+    attr_accessor :cache_backend
 
     def initialize context
       @context = context
       @buffer = UnwindableBuffer.new
+
+      @cache_backend = ::Rails.cache if defined?(Rails) && Rails.respond_to?(:cache)
 
       # Keeps track of structures implicitly opened and closed
       @implicit_stack = []
@@ -83,6 +86,37 @@ module Jblazer
         @buffer << obj.send(key).to_json
         @buffer << ","
       end
+    end
+
+    def compute_cache_key key
+      key
+    end
+
+    def cache! key, opts={}, &block
+      cache_key = compute_cache_key key
+      
+      depth = @implicit_stack.length
+
+      value = @cache_backend.fetch(cache_key, opts) do
+        # Create a temporary buffer for the cached bit
+        @original_buffer = @buffer
+        @buffer = UnwindableBuffer.new 
+
+        @is_first = true
+
+        block.call
+
+        implicitly_close if @implicit_stack.length > depth
+        
+        # Restore the original buffer and return the contents of the
+        # temporary one
+        contents = @buffer.to_s
+        @buffer = @original_buffer
+
+        contents
+      end
+
+      @buffer << value
     end
 
     def to_s

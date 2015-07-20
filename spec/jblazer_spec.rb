@@ -1,8 +1,27 @@
 require_relative 'spec_helper'
 
+class FakeCache
+  def initialize
+    @store = {}
+  end
+
+  def fetch key, opts={}, &block
+    value = @store[key]
+
+    if !@store.has_key?(key) && block
+      value = block.call
+      
+      @store[key] = value
+    end
+
+    value
+  end
+end
+
 describe Jblazer do
   def make_template context=nil
     json = Jblazer::Template.new context
+    json.cache_backend = FakeCache.new
 
     yield json
 
@@ -97,5 +116,49 @@ describe Jblazer do
     end
 
     expect(template.to_s).to eql '{"a":{"b":"c"}}'
+  end
+
+  describe 'caching' do
+    it 'should cache array members' do
+      array = [:a, :b]
+
+      cache_spy = spy('cache')
+      cache = FakeCache.new
+
+      render = Proc.new do
+        json = Jblazer::Template.new nil
+        json.cache_backend = cache
+
+        index = 0
+
+        json.array! array do |item|
+          key = index.to_s
+
+          json.cache!(key) do
+            cache_spy.miss
+
+            json.index index
+            json.value item
+          end
+
+          index += 1
+        end
+
+        json.to_s
+      end
+
+      json = '[{"index":0,"value":"a"},{"index":1,"value":"b"}]'
+
+      expect(cache_spy).not_to have_received(:miss)
+
+      # Check that the initial render is correct and misses the cache
+      expect(render.call).to eql json
+      expect(cache_spy).to have_received(:miss).twice
+
+      # Check that the second render hits the cache (ie. no change in
+      # call count)
+      expect(render.call).to eql json
+      expect(cache_spy).to have_received(:miss).twice
+    end
   end
 end
