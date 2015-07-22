@@ -45,7 +45,7 @@ module Jblazer
       depth = @implicit_stack.length
 
       last_index = items.length - 1
-      
+
       items.each_with_index do |item, index|
         @is_first = true
 
@@ -94,20 +94,20 @@ module Jblazer
 
     def cache! key, opts={}, &block
       cache_key = compute_cache_key key
-      
+
       depth = @implicit_stack.length
 
       value = @cache_backend.fetch(cache_key, opts) do
         # Create a temporary buffer for the cached bit
         @original_buffer = @buffer
-        @buffer = UnwindableBuffer.new 
+        @buffer = UnwindableBuffer.new
 
         @is_first = true
 
         block.call
 
         implicitly_close if @implicit_stack.length > depth
-        
+
         # Restore the original buffer and return the contents of the
         # temporary one
         contents = @buffer.to_s
@@ -117,6 +117,18 @@ module Jblazer
       end
 
       @buffer << value
+    end
+
+    def call *args
+      if args.length < 2
+        raise ArgumentError, "expects at least 2 arguments"
+      end
+
+      implicitly_open :object
+
+      receiver, *properties = args
+
+      extract! receiver, *properties
     end
 
     def to_s
@@ -180,7 +192,7 @@ module Jblazer
       @buffer.unwind if @buffer.last == ","
 
       kind = @implicit_stack.pop
-      
+
       case kind
       when :object
         @buffer << "}"

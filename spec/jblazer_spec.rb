@@ -10,7 +10,7 @@ class FakeCache
 
     if !@store.has_key?(key) && block
       value = block.call
-      
+
       @store[key] = value
     end
 
@@ -96,9 +96,9 @@ describe Jblazer do
     expect(template.to_s).to eql '{"items":[{"a":1},{"b":2}]}'
   end
 
-  it 'should extract some values' do
-    AnObject = Struct.new :a, :b
+  AnObject = Struct.new :a, :b
 
+  it 'should extract some values' do
     object = AnObject.new 1, 2
 
     template = make_template do |json|
@@ -106,6 +106,16 @@ describe Jblazer do
     end
 
     expect(template.to_s).to eql '{"a":1,"b":2}'
+  end
+
+  it 'should handle a #call' do
+    object = AnObject.new 3, 4
+
+    template = make_template do |json|
+      json.(object, :a, :b)
+    end
+
+    expect(template.to_s).to eql '{"a":3,"b":4}'
   end
 
   it 'should define a value with a block' do
