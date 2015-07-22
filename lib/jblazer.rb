@@ -131,8 +131,20 @@ module Jblazer
       extract! receiver, *properties
     end
 
+    def null!
+      if !@is_first
+        raise RuntimeError, "null! must be the first and only call"
+      end
+
+      @buffer << 'null'
+
+      @is_first = false
+    end
+
     def to_s
       implicitly_close if @implicit_stack.length > 0
+
+      @buffer.unwind if @buffer.last == ","
 
       @buffer.to_s
     end
@@ -153,9 +165,9 @@ module Jblazer
         @buffer << args.first.to_json
 
       elsif !block.nil?
-        @is_first = true
-
         implicitly_open :object
+
+        @is_first = true
 
         block.call self
 

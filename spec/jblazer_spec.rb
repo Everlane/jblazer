@@ -118,6 +118,20 @@ describe Jblazer do
     expect(template.to_s).to eql '{"a":3,"b":4}'
   end
 
+  it 'should generate null' do
+    template = make_template do |json|
+      json.a do
+        json.b '1'
+        json.c do
+          json.null!
+        end
+      end
+    end
+
+    expect(template.to_s).to eql '{"a":{"b":"1","c":null}}'
+  end
+
+
   it 'should define a value with a block' do
     template = make_template do |json|
       json.a do
