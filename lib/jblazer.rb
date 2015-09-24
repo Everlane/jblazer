@@ -40,7 +40,15 @@ module Jblazer
     end
 
     def array! items, &block
+      check_for_single!
+
       @buffer << "["
+
+      # If we're the first definition in an implicit object then
+      # we'll assume we're the ONLY definition in that object.
+      if @is_first && @implicit_stack.last == :object
+        @implicit_stack << :single
+      end
 
       depth = @implicit_stack.length
 
@@ -61,6 +69,7 @@ module Jblazer
         @buffer << "," unless index == last_index
       end
 
+      @is_first = false
       @buffer << "]"
     end
 
@@ -154,6 +163,7 @@ module Jblazer
 
     def method_missing name, *args, &block
       implicitly_open :object
+      check_for_single! if args.any?
 
       @buffer << name.to_json
       @buffer << ':'
@@ -185,6 +195,12 @@ module Jblazer
 
     private
 
+    def check_for_single!
+      if @implicit_stack.last == :single
+        raise "Cannot have second definition in single-definition context"
+      end
+    end
+
     # Called as a pre-condition by key-value-defining methods to set up
     # the JSON block definition for those keys and values.
     def implicitly_open kind
@@ -210,7 +226,11 @@ module Jblazer
 
       case kind
       when :object
-        @buffer << "}"
+        @buffer << '}'
+      when :array
+        @buffer << ']'
+      when :single
+        return
       else
         raise "Cannot close kind: #{kind.inspect}"
       end

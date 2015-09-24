@@ -79,6 +79,46 @@ describe Jblazer do
     expect(template.to_s).to eql '[["foo"],["bar"],[123]]'
   end
 
+  it 'should directly set an array in another array' do
+    first  = [1, 4]
+    second = [2, 5]
+    third  = [3, 6]
+
+    template = make_template do |json|
+      json.array! first do |value|
+        json.x value
+        json.y do
+          json.array! [second.shift]
+        end
+        json.z third.shift
+      end
+    end
+
+    expect(template.to_s).to eql '[{"x":1,"y":[2],"z":3},{"x":4,"y":[5],"z":6}]'
+  end
+
+  it 'should error on second definitions in single-definition contexts' do
+    # Test #method_missing
+    expect {
+      make_template do |json|
+        json.a do
+          json.array! ['b']
+          json.c 'd'
+        end
+      end
+    }.to raise_error /second definition/
+
+    # Test #array!
+    expect {
+      make_template do |json|
+        json.a do
+          json.array! ['b']
+          json.array! ['c']
+        end
+      end
+    }.to raise_error /second definition/
+  end
+
   it 'should compile an array of objects' do
     items = [
       {:a => 1},
