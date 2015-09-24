@@ -80,10 +80,13 @@ module Jblazer
     def extract! obj, *keys
       implicitly_open :object
 
+      is_hash = obj.kind_of? Hash
+
       keys.each do |key|
+        value = is_hash ? obj[key] : obj.send(key)
         @buffer << key.to_json
         @buffer << ':'
-        @buffer << obj.send(key).to_json
+        @buffer << value.to_json
         @buffer << ","
       end
     end

@@ -98,7 +98,7 @@ describe Jblazer do
 
   AnObject = Struct.new :a, :b
 
-  it 'should extract some values' do
+  it 'should extract from an object' do
     object = AnObject.new 1, 2
 
     template = make_template do |json|
@@ -108,7 +108,17 @@ describe Jblazer do
     expect(template.to_s).to eql '{"a":1,"b":2}'
   end
 
-  it 'should handle a #call' do
+  it 'should extract from a hash' do
+    hash = {:a => 1, :b => 2}
+
+    template = make_template do |json|
+      json.extract! hash, :a, :b
+    end
+
+    expect(template.to_s).to eql '{"a":1,"b":2}'
+  end
+
+  it 'should receive a #call' do
     object = AnObject.new 3, 4
 
     template = make_template do |json|
