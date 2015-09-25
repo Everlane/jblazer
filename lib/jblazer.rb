@@ -74,6 +74,8 @@ module Jblazer
     end
 
     def partial! name, opts
+      check_for_single!
+
       raise ':collection not supported yet' if opts[:collection]
       raise ':as not supported yet' if opts[:as]
 
@@ -87,6 +89,7 @@ module Jblazer
     end
 
     def extract! obj, *keys
+      check_for_single!
       implicitly_open :object
 
       is_hash = obj.kind_of? Hash
@@ -132,10 +135,9 @@ module Jblazer
     end
 
     def call *args
-      if args.length < 2
-        raise ArgumentError, "expects at least 2 arguments"
-      end
+      raise ArgumentError, "expects at least 2 arguments" if args.length < 2
 
+      check_for_single!
       implicitly_open :object
 
       receiver, *properties = args
@@ -153,17 +155,9 @@ module Jblazer
       @is_first = false
     end
 
-    def to_s
-      implicitly_close if @implicit_stack.length > 0
-
-      @buffer.unwind if @buffer.last == ","
-
-      @buffer.to_s
-    end
-
     def method_missing name, *args, &block
-      implicitly_open :object
       check_for_single! if args.any?
+      implicitly_open :object
 
       @buffer << name.to_json
       @buffer << ':'
@@ -191,6 +185,14 @@ module Jblazer
       end
 
       @buffer << ","
+    end
+
+    def to_s
+      implicitly_close if @implicit_stack.length > 0
+
+      @buffer.unwind if @buffer.last == ","
+
+      @buffer.to_s
     end
 
     private
