@@ -197,6 +197,11 @@ module Jblazer
 
     private
 
+    # Check for the presence of a single-definition flag on the implicit
+    # stack. Calls which add one-and-only-one set of values to the buffer
+    # in a given stack context will add this flag to tell subsequent
+    # calls that they are invalid in that context. `implicitly_close` removes
+    # a single-definition flag if it is present.
     def check_for_single!
       if @implicit_stack.last == :single
         raise "Cannot have second definition in single-definition context"
@@ -220,7 +225,8 @@ module Jblazer
     end
 
     # Called as a post-condition of methods that build outer structures
-    # (arrays and objects) after they've processed each member.
+    # (arrays and objects) after they've processed their members. Also removes
+    # a single-definition flag from the top of the stack if it is present.
     def implicitly_close
       @buffer.unwind if @buffer.last == ","
 
