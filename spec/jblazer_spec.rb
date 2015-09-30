@@ -1,4 +1,5 @@
 require_relative 'spec_helper'
+require 'active_support/json/encoding'
 
 class FakeCache
   def initialize
@@ -18,10 +19,11 @@ class FakeCache
   end
 end
 
+Jblazer::Template.cache_backend = FakeCache.new
+
 describe Jblazer do
   def make_template context=nil
     json = Jblazer::Template.new context
-    json.cache_backend = FakeCache.new
 
     yield json
 
@@ -201,8 +203,6 @@ describe Jblazer do
 
       render = Proc.new do
         json = Jblazer::Template.new nil
-        json.cache_backend = cache
-
         index = 0
 
         json.array! array do |item|

@@ -1,4 +1,5 @@
-require 'active_support/json/encoding'
+require 'active_support/proxy_object'
+require 'multi_json'
 
 module Jblazer
   class UnwindableBuffer
@@ -23,15 +24,12 @@ module Jblazer
     end
   end
 
-  class Template
+  class Template < ::ActiveSupport::ProxyObject
     attr_reader :buffer, :context
-    attr_accessor :cache_backend
 
     def initialize context
       @context = context
       @buffer = UnwindableBuffer.new
-
-      @cache_backend = ::Rails.cache if defined?(Rails) && Rails.respond_to?(:cache)
 
       # Keeps track of structures implicitly opened and closed
       @implicit_stack = []
@@ -39,7 +37,7 @@ module Jblazer
       @is_first = true
     end
 
-    def array! items, &block
+    def array! items
       check_for_single!
 
       @buffer << '['.freeze
@@ -50,17 +48,18 @@ module Jblazer
         @implicit_stack << :single
       end
 
-      depth = @implicit_stack.length
+      @implicit_stack << :array
 
-      last_index = items.length - 1
+      depth      = @implicit_stack.length
+      last_index = items.count - 1
 
       items.each_with_index do |item, index|
         @is_first = true
 
-        if block.nil?
-          @buffer << item.to_json
+        if ::Kernel.block_given?
+          yield item
         else
-          block.call item
+          @buffer << to_json(item)
         end
 
         # Close whatever was opened by the item
@@ -71,6 +70,11 @@ module Jblazer
 
       @is_first = false
       @buffer << ']'.freeze
+
+      top = @implicit_stack.pop
+      unless top == :array
+        raise "Unexpected top of implicit stack: #{top.to_s}"
+      end
     end
 
     def partial! name, opts
@@ -92,13 +96,13 @@ module Jblazer
       check_for_single!
       implicitly_open :object
 
-      is_hash = obj.kind_of? Hash
+      is_hash = obj.kind_of? ::Hash
 
       keys.each do |key|
         value = is_hash ? obj[key] : obj.send(key)
-        @buffer << key.to_json
+        @buffer << to_json(key)
         @buffer << ':'.freeze
-        @buffer << value.to_json
+        @buffer << to_json(value)
         @buffer << ','.freeze
       end
     end
@@ -112,7 +116,7 @@ module Jblazer
 
       depth = @implicit_stack.length
 
-      value = @cache_backend.fetch(cache_key, opts) do
+      value = Template.cache_backend.fetch(cache_key, opts) do
         # Create a temporary buffer for the cached bit
         @original_buffer = @buffer
         @buffer = UnwindableBuffer.new
@@ -155,28 +159,33 @@ module Jblazer
       @is_first = false
     end
 
-    def method_missing name, *args, &block
-      check_for_single! if args.any?
+    def method_missing name, *args
+      block_given = ::Kernel.block_given?
+      count       = args.count
+
+      check_for_single! if count > 0
       implicitly_open :object
 
-      @buffer << name.to_json
+      @buffer << to_json(name)
       @buffer << ':'.freeze
 
-      if args.length > 1
+      if count > 1
         raise "Too many arguments (max is 1, got #{args.length})"
 
-      elsif args.length == 1 && !block.nil?
-        array! args.first, &block
+      elsif count == 1 && block_given
+        given_block = ::Proc.new
 
-      elsif args.length == 1
-        @buffer << args.first.to_json
+        array! args.first, &given_block
 
-      elsif !block.nil?
+      elsif count == 1
+        @buffer << to_json(args.first)
+
+      elsif block_given
         implicitly_open :object
 
         @is_first = true
 
-        block.call self
+        yield self
 
         implicitly_close
 
@@ -193,6 +202,10 @@ module Jblazer
       @buffer.unwind if @buffer.last == ','.freeze
 
       @buffer.to_s
+    end
+
+    def inspect
+      "#<#{Template}>"
     end
 
     private
@@ -241,6 +254,19 @@ module Jblazer
         return
       else
         raise "Cannot close kind: #{kind.inspect}"
+      end
+    end
+
+    def to_json value
+      Template.adapter.dump value
+    end
+
+    class << self
+      attr_writer :adapter
+      attr_accessor :cache_backend
+
+      def adapter
+        @adapter ||= ::MultiJson.current_adapter
       end
     end
 

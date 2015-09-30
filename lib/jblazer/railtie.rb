@@ -1,6 +1,9 @@
 require 'action_dispatch/http/mime_type'
 
 module Jblazer
+
+  Template.cache_backend = Rails.cache if Rails.respond_to?(:cache)
+
   class TemplateHandler
     def default_format
       Mime::JSON
