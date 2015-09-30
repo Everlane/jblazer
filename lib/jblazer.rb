@@ -196,6 +196,12 @@ module Jblazer
       @buffer << ','.freeze
     end
 
+    # ProxyObject doesn't provide #send (since it subclasses BasicObject, so
+    # we need to fudge our own implementation).
+    def send key, value
+      method_missing key, value
+    end
+
     def to_s
       implicitly_close if @implicit_stack.length > 0
 
