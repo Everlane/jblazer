@@ -11,7 +11,7 @@ module Jblazer
     end
 
     def to_s
-      @contents.map(&:strip).join ''
+      @contents.map(&:strip).join ''.freeze
     end
 
     def last
@@ -42,7 +42,7 @@ module Jblazer
     def array! items, &block
       check_for_single!
 
-      @buffer << "["
+      @buffer << '['.freeze
 
       # If we're the first definition in an implicit object then
       # we'll assume we're the ONLY definition in that object.
@@ -66,18 +66,18 @@ module Jblazer
         # Close whatever was opened by the item
         implicitly_close if @implicit_stack.length > depth
 
-        @buffer << "," unless index == last_index
+        @buffer << ','.freeze unless index == last_index
       end
 
       @is_first = false
-      @buffer << "]"
+      @buffer << ']'.freeze
     end
 
     def partial! name, opts
       check_for_single!
 
       raise ':collection not supported yet' if opts[:collection]
-      raise ':as not supported yet' if opts[:as]
+      raise ':as not supported yet'         if opts[:as]
 
       locals = opts.delete(:locals) || {}
 
@@ -97,9 +97,9 @@ module Jblazer
       keys.each do |key|
         value = is_hash ? obj[key] : obj.send(key)
         @buffer << key.to_json
-        @buffer << ':'
+        @buffer << ':'.freeze
         @buffer << value.to_json
-        @buffer << ","
+        @buffer << ','.freeze
       end
     end
 
@@ -150,7 +150,7 @@ module Jblazer
         raise RuntimeError, "null! must be the first and only call"
       end
 
-      @buffer << 'null'
+      @buffer << 'null'.freeze
 
       @is_first = false
     end
@@ -160,7 +160,7 @@ module Jblazer
       implicitly_open :object
 
       @buffer << name.to_json
-      @buffer << ':'
+      @buffer << ':'.freeze
 
       if args.length > 1
         raise "Too many arguments (max is 1, got #{args.length})"
@@ -184,13 +184,13 @@ module Jblazer
         raise "Missing value argument for '#{name}'"
       end
 
-      @buffer << ","
+      @buffer << ','.freeze
     end
 
     def to_s
       implicitly_close if @implicit_stack.length > 0
 
-      @buffer.unwind if @buffer.last == ","
+      @buffer.unwind if @buffer.last == ','.freeze
 
       @buffer.to_s
     end
@@ -204,7 +204,7 @@ module Jblazer
     # a single-definition flag if it is present.
     def check_for_single!
       if @implicit_stack.last == :single
-        raise "Cannot have second definition in single-definition context"
+        raise 'Cannot have second definition in single-definition context'
       end
     end
 
@@ -215,7 +215,7 @@ module Jblazer
 
       case kind
       when :object
-        @buffer << "{"
+        @buffer << '{'.freeze
       else
         raise "Cannot open kind: #{kind.inspect}"
       end
@@ -228,15 +228,15 @@ module Jblazer
     # (arrays and objects) after they've processed their members. Also removes
     # a single-definition flag from the top of the stack if it is present.
     def implicitly_close
-      @buffer.unwind if @buffer.last == ","
+      @buffer.unwind if @buffer.last == ','.freeze
 
       kind = @implicit_stack.pop
 
       case kind
       when :object
-        @buffer << '}'
+        @buffer << '}'.freeze
       when :array
-        @buffer << ']'
+        @buffer << ']'.freeze
       when :single
         return
       else
