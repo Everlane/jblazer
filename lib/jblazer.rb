@@ -27,7 +27,7 @@ module Jblazer
   class Template < ::ActiveSupport::ProxyObject
     attr_reader :buffer, :context
 
-    def initialize context
+    def initialize context=nil
       @context = context
       @buffer = UnwindableBuffer.new
 
